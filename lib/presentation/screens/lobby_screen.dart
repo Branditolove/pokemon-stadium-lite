@@ -397,24 +397,43 @@ class _LobbyScreenState extends State<LobbyScreen>
                               const Icon(Icons.check_circle,
                                   color: AppColors.hpHealthy, size: 22),
                               const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Conectado como',
-                                    style: TextStyle(
-                                        color: AppColors.hpHealthy,
-                                        fontSize: 11),
-                                  ),
-                                  Text(
-                                    currentPlayer.nickname,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Conectado como',
+                                      style: TextStyle(
+                                          color: AppColors.hpHealthy,
+                                          fontSize: 11),
                                     ),
+                                    Text(
+                                      currentPlayer.nickname,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () => gameProvider.resetPlayerState(),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 4),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: const Text(
+                                  'Cambiar',
+                                  style: TextStyle(
+                                    color: AppColors.pokemonYellow,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                ],
+                                ),
                               ),
                             ],
                           ),
@@ -494,6 +513,127 @@ class _LobbyScreenState extends State<LobbyScreen>
                             ],
                           ),
                         ),
+                        // ─── Spawn bot (when already in lobby alone) ──
+                        if (currentPlayer != null) ...[
+                          const SizedBox(height: 20),
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'INVOCAR OPONENTE',
+                              style: TextStyle(
+                                color: AppColors.pokemonYellow,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          ..._botOptions.map((bot) {
+                            final isSelected = _selectedDifficulty == bot['difficulty'];
+                            final borderColor = bot['border'] as Color;
+                            final bgColor = bot['color'] as Color;
+                            return GestureDetector(
+                              onTap: () => setState(() => _selectedDifficulty = bot['difficulty'] as String),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? bgColor.withOpacity(0.35) : AppColors.darkGray,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: isSelected ? borderColor : const Color(0xFF333333),
+                                    width: isSelected ? 2 : 1,
+                                  ),
+                                  boxShadow: isSelected
+                                      ? [BoxShadow(color: borderColor.withOpacity(0.4), blurRadius: 10, spreadRadius: 1)]
+                                      : [],
+                                ),
+                                child: Row(
+                                  children: [
+                                    Text(bot['icon'] as String, style: const TextStyle(fontSize: 26)),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Text(
+                                                bot['name'] as String,
+                                                style: TextStyle(
+                                                  color: isSelected ? Colors.white : const Color(0xFFbbbbbb),
+                                                  fontSize: 15,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: bgColor.withOpacity(0.5),
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  bot['label'] as String,
+                                                  style: TextStyle(
+                                                    color: borderColor,
+                                                    fontSize: 9,
+                                                    fontWeight: FontWeight.bold,
+                                                    letterSpacing: 1,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            bot['desc'] as String,
+                                            style: const TextStyle(color: Color(0xFF888888), fontSize: 11),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(bot['stars'] as String, style: const TextStyle(fontSize: 12)),
+                                        ],
+                                      ),
+                                    ),
+                                    if (isSelected)
+                                      Icon(Icons.check_circle_rounded, color: borderColor, size: 22),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton.icon(
+                              onPressed: _selectedDifficulty == null ? null : () {
+                                final bot = _botOptions.firstWhere((b) => b['difficulty'] == _selectedDifficulty);
+                                gameProvider.setSelectedBot(_selectedDifficulty!, bot['name'] as String);
+                                gameProvider.spawnBot(_selectedDifficulty!);
+                              },
+                              icon: const Text('⚔', style: TextStyle(fontSize: 18)),
+                              label: Text(
+                                _selectedDifficulty != null
+                                    ? 'INVOCAR A ${(_botOptions.firstWhere((b) => b['difficulty'] == _selectedDifficulty)['name'] as String).toUpperCase()}'
+                                    : 'SELECCIONA UN OPONENTE',
+                                style: const TextStyle(
+                                  color: AppColors.pokemonYellow,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _selectedDifficulty != null ? AppColors.pokemonRed : const Color(0xFF333333),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                elevation: 6,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
 
                       if (gameProvider.errorMessage != null) ...[

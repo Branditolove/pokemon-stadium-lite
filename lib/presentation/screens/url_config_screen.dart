@@ -37,12 +37,15 @@ class _UrlConfigScreenState extends State<UrlConfigScreen>
     super.dispose();
   }
 
+  static const String _defaultBackendUrl =
+      'https://pokemon-stadium-backend-production.up.railway.app';
+
   Future<void> _loadSavedUrl() async {
     final url = await StorageService.getBackendUrl();
     if (mounted) {
       setState(() {
         _savedUrl = url;
-        if (url != null) _urlController.text = url;
+        _urlController.text = url ?? _defaultBackendUrl;
       });
     }
   }
@@ -202,7 +205,7 @@ class _UrlConfigScreenState extends State<UrlConfigScreen>
                           color: AppColors.lightGray, fontSize: 15),
                       keyboardType: TextInputType.url,
                       decoration: const InputDecoration(
-                        hintText: 'http://192.168.1.100:8080',
+                        hintText: 'https://tu-servidor.up.railway.app',
                         hintStyle: TextStyle(color: Color(0xFF555555)),
                         prefixIcon: Icon(Icons.link_rounded,
                             color: AppColors.pokemonRed),

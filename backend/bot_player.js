@@ -17,12 +17,17 @@ const socket = io(URL, {
   reconnection: false,
 });
 
-let myPlayerId  = null;
-let isMyTurn    = false;
+let myPlayerId   = null;
+let isMyTurn     = false;
 let battleActive = false;
 let teamAssigned = false;
+let teamReceived = false;   // confirmado: el equipo llegó en lobby_status
 let readySent    = false;
 let myMoves      = [];
+let assignRetryTimer = null;
+let assignRetryCount = 0;
+const MAX_ASSIGN_RETRIES = 4;
+const ASSIGN_TIMEOUT_MS  = 8000;
 
 // ─── Conexión ───────────────────────────────────────────────
 socket.on('connect', () => {
@@ -30,6 +35,25 @@ socket.on('connect', () => {
   console.log(`📨 Enviando join_lobby con nickname: ${NICKNAME}`);
   socket.emit('join_lobby', { nickname: NICKNAME });
 });
+
+// ─── Helper: pide (o reintenta) assign_pokemon ───────────────
+function tryAssignPokemon() {
+  if (teamReceived || readySent) return;
+  assignRetryCount++;
+  console.log(`📨 Enviando assign_pokemon (intento ${assignRetryCount}/${MAX_ASSIGN_RETRIES})...`);
+  socket.emit('assign_pokemon', {});
+
+  if (assignRetryTimer) clearTimeout(assignRetryTimer);
+
+  if (assignRetryCount < MAX_ASSIGN_RETRIES) {
+    assignRetryTimer = setTimeout(() => {
+      if (!teamReceived && !readySent) {
+        console.log(`⚠️  Sin equipo tras ${ASSIGN_TIMEOUT_MS / 1000}s, reintentando assign_pokemon...`);
+        tryAssignPokemon();
+      }
+    }, ASSIGN_TIMEOUT_MS);
+  }
+}
 
 // ─── Lobby Status ────────────────────────────────────────────
 socket.on('lobby_status', (data) => {
@@ -43,8 +67,7 @@ socket.on('lobby_status', (data) => {
 
       if (!teamAssigned) {
         teamAssigned = true;
-        console.log('📨 Enviando assign_pokemon (random)...');
-        socket.emit('assign_pokemon', {});
+        tryAssignPokemon();
       }
     }
   }
@@ -56,6 +79,11 @@ socket.on('lobby_status', (data) => {
 
     const me = data.players.find(p => p.nickname === NICKNAME);
     if (me && me.team && me.team.length > 0 && !readySent) {
+      teamReceived = true;
+      if (assignRetryTimer) {
+        clearTimeout(assignRetryTimer);
+        assignRetryTimer = null;
+      }
       readySent = true;
       console.log('📨 Enviando ready...');
       socket.emit('ready');

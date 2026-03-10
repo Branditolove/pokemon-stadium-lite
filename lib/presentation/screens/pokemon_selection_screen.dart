@@ -14,6 +14,7 @@ class PokemonSelectionScreen extends StatefulWidget {
 class _PokemonSelectionScreenState extends State<PokemonSelectionScreen> {
   List<int> _selectedIds = [];
   String _selectedType = 'Todos';
+  bool _confirming = false;
 
   List<String> _getAvailableTypes(List<dynamic> pokemon) {
     final types = <String>{'Todos'};
@@ -82,9 +83,18 @@ class _PokemonSelectionScreenState extends State<PokemonSelectionScreen> {
         // Navigate to TeamScreen when team has been assigned
         if (currentPlayer != null && currentPlayer.team.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (context) => const TeamScreen()),
-            );
+            if (mounted) {
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (context) => const TeamScreen()),
+              );
+            }
+          });
+        }
+
+        // Reset confirming state if server returned an error
+        if (_confirming && gameProvider.errorMessage != null) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _confirming = false);
           });
         }
 
@@ -268,15 +278,52 @@ class _PokemonSelectionScreenState extends State<PokemonSelectionScreen> {
                       ),
                     ),
 
+                    // Error message
+                    if (gameProvider.errorMessage != null && !_confirming) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF330000),
+                            border: Border.all(color: AppColors.hpCritical, width: 1.5),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.error_outline, color: AppColors.hpCritical, size: 18),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  gameProvider.errorMessage!,
+                                  style: const TextStyle(color: AppColors.hpCritical, fontSize: 12),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => gameProvider.clearError(),
+                                child: const Icon(Icons.close, color: AppColors.hpCritical, size: 16),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+
                     // Confirm button
                     Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                       child: SizedBox(
                         width: double.infinity,
                         height: 52,
                         child: ElevatedButton(
-                          onPressed: _selectedIds.length == 3
-                              ? () => gameProvider.selectTeam(_selectedIds)
+                          onPressed: (_selectedIds.length == 3 && !_confirming)
+                              ? () {
+                                  setState(() => _confirming = true);
+                                  gameProvider.clearError();
+                                  gameProvider.selectTeam(_selectedIds);
+                                }
                               : null,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.hpHealthy,
@@ -285,16 +332,25 @@ class _PokemonSelectionScreenState extends State<PokemonSelectionScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: Text(
-                            _selectedIds.length == 3
-                                ? '✓ Confirmar Equipo'
-                                : 'Selecciona ${3 - _selectedIds.length} más',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          child: _confirming
+                              ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                )
+                              : Text(
+                                  _selectedIds.length == 3
+                                      ? '✓ Confirmar Equipo'
+                                      : 'Selecciona ${3 - _selectedIds.length} más',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                         ),
                       ),
                     ),

@@ -52,8 +52,10 @@ class MongoLobbyRepository extends ILobbyRepository {
    */
   async findGlobalLobby() {
     try {
+      // Only find lobbies in 'waiting' state (joinable).
+      // 'ready', 'battling' and 'finished' lobbies are not joinable.
       const lobbyDoc = await LobbyModel.findOne({
-        status: { $ne: 'finished' }
+        status: 'waiting'
       });
       if (!lobbyDoc) return null;
 

@@ -60,6 +60,19 @@ class GameProvider extends ChangeNotifier {
     _socketService.on('error', (data) {
       _handleError(data);
     });
+
+    // Reset session state on disconnect so stale player data is cleared
+    _socketService.on('disconnect', (_) {
+      if (_currentPlayer != null) {
+        _currentPlayer = null;
+        _lobby = LobbyModel();
+        _needsTeamSelection = false;
+        _availablePokemon = [];
+        _pendingBotDifficulty = null;
+        _selectedBotName = null;
+        notifyListeners();
+      }
+    });
   }
 
   void _handleLobbyStatus(dynamic data) {
@@ -328,6 +341,10 @@ class GameProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  void spawnBot(String difficulty) {
+    _socketService.emit('spawn_bot', {'difficulty': difficulty});
+  }
+
   void joinLobby(String nickname) {
     _currentPlayer = PlayerModel(nickname: nickname);
     _socketService.emit('join_lobby', {'nickname': nickname});
@@ -360,6 +377,22 @@ class GameProvider extends ChangeNotifier {
   }
 
   void clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  /// Resets player session without disconnecting the socket.
+  /// Useful when the user wants to play again with a different name.
+  void resetPlayerState() {
+    _currentPlayer = null;
+    _lobby = LobbyModel();
+    _battleLog.clear();
+    _isMyTurn = false;
+    _needsTeamSelection = false;
+    _availablePokemon = [];
+    _pendingBotDifficulty = null;
+    _selectedBotName = null;
+    _brandonMessage = null;
     _errorMessage = null;
     notifyListeners();
   }

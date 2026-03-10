@@ -62,6 +62,14 @@ async function startServer() {
     await connectDatabase(mongodbUri);
     console.log('Database connected');
 
+    // Cleanup stale lobbies from a previous server session
+    // (waiting/ready lobbies with orphaned players from crashed/killed processes)
+    const LobbyModel = require('./infrastructure/database/models/LobbyModel');
+    const staleResult = await LobbyModel.deleteMany({ status: { $in: ['waiting', 'ready'] } });
+    if (staleResult.deletedCount > 0) {
+      console.log(`Cleaned up ${staleResult.deletedCount} stale lobby(s) from previous session`);
+    }
+
     // Crear aplicación
     const { app, httpServer, io } = await createApp();
 

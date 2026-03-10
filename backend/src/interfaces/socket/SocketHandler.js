@@ -1,6 +1,5 @@
-const path = require('path');
-const { spawn } = require('child_process');
 const EVENTS = require('./events');
+const { spawnInProcessBot } = require('../../bot_runner');
 const JoinLobbyUseCase = require('../../application/usecases/JoinLobbyUseCase');
 const AssignPokemonUseCase = require('../../application/usecases/AssignPokemonUseCase');
 const ReadyUseCase = require('../../application/usecases/ReadyUseCase');
@@ -282,16 +281,12 @@ class SocketHandler {
       const nickname = diffMap[difficulty] || 'Gary';
       const validDifficulty = diffMap[difficulty] ? difficulty : 'medium';
 
-      const botScript = path.join(__dirname, '..', '..', '..', 'bot_player.js');
-      const backendUrl = 'http://localhost:8080';
+      const PORT = process.env.PORT || 8080;
+      const backendUrl = `http://localhost:${PORT}`;
 
-      const child = spawn('node', [botScript, backendUrl, nickname, validDifficulty], {
-        detached: true,
-        stdio: 'ignore'
-      });
-      child.unref();
+      spawnInProcessBot({ url: backendUrl, nickname, difficulty: validDifficulty });
 
-      console.log(`🤖 Bot spawneado: ${nickname} [${validDifficulty}]`);
+      console.log(`🤖 Bot spawneado in-process: ${nickname} [${validDifficulty}]`);
     } catch (error) {
       console.error('Error spawning bot:', error);
     }
