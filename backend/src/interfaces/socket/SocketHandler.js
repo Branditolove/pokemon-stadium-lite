@@ -282,7 +282,7 @@ class SocketHandler {
       const validDifficulty = diffMap[difficulty] ? difficulty : 'medium';
 
       const PORT = process.env.PORT || 8080;
-      const backendUrl = `http://localhost:${PORT}`;
+      const backendUrl = `http://127.0.0.1:${PORT}`;
 
       spawnInProcessBot({ url: backendUrl, nickname, difficulty: validDifficulty });
 

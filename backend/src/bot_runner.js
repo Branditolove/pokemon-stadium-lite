@@ -13,7 +13,7 @@ const { io } = require('socket.io-client');
  */
 function spawnInProcessBot({ url, nickname, difficulty }) {
   const socket = io(url, {
-    transports: ['websocket', 'polling'],
+    transports: ['polling'],
     reconnection: false,
   });
 
