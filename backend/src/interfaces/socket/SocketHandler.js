@@ -49,12 +49,14 @@ class SocketHandler {
    * Helper: serializa un jugador para emitir en lobby_status
    */
   _serializePlayer(p) {
+    const activePokemon = p.getActivePokemon ? p.getActivePokemon() : null;
     return {
       id: p.id,
       nickname: p.nickname,
       ready: p.ready,
       team: p.team.map(poke => this._serializePokemon(poke)),
-      isActive: p.isActive
+      isActive: p.isActive,
+      currentPokemonName: activePokemon?.name ?? null
     };
   }
 
@@ -66,6 +68,7 @@ class SocketHandler {
     socket.on(EVENTS.ASSIGN_POKEMON, (payload) => this.handleAssignPokemon(socket, payload));
     socket.on(EVENTS.READY, () => this.handleReady(socket));
     socket.on(EVENTS.ATTACK, (payload) => this.handleAttack(socket, payload));
+    socket.on(EVENTS.SWITCH_POKEMON, (payload) => this.handleSwitchPokemon(socket, payload));
     socket.on('get_pokemon_list', () => this.handleGetPokemonList(socket));
     socket.on('spawn_bot', (payload) => this.handleSpawnBot(socket, payload));
     socket.on('disconnect', () => this.handleDisconnect(socket));
@@ -267,6 +270,46 @@ class SocketHandler {
     } catch (error) {
       console.error('Error in handleAttack:', error);
       socket.emit(EVENTS.ERROR, { message: error.message });
+    }
+  }
+
+  /**
+   * Maneja el cambio de pokémon activo (elección del jugador)
+   * payload: { pokemonName: string }
+   */
+  async handleSwitchPokemon(socket, payload) {
+    try {
+      const { playerId, lobbyId } = socket.data;
+      const { pokemonName } = payload || {};
+
+      if (!playerId || !pokemonName) return;
+
+      const player = await this.playerRepository.findById(playerId);
+      if (!player) return;
+
+      // Verificar que el pokemon existe, no está derrotado y pertenece al jugador
+      const targetPokemon = player.team.find(p => p.name === pokemonName && !p.defeated);
+      if (!targetPokemon) return;
+
+      player.setActivePokemon(pokemonName);
+      await this.playerRepository.update(player);
+
+      // Notificar al lobby del cambio
+      if (lobbyId) {
+        const lobby = await this.lobbyRepository.findById(lobbyId);
+        if (lobby) {
+          const playersData = await Promise.all(
+            lobby.players.map(p => this.playerRepository.findById(p.id))
+          );
+          lobby.players = playersData;
+          this.io.to(`lobby:${lobbyId}`).emit(EVENTS.LOBBY_STATUS, {
+            status: lobby.status,
+            players: lobby.players.map(p => this._serializePlayer(p))
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error in handleSwitchPokemon:', error);
     }
   }
 

@@ -14,6 +14,7 @@ class GameProvider extends ChangeNotifier {
   String? _errorMessage;
   bool _isConnecting = false;
   bool _needsTeamSelection = false;
+  bool _needsPokemonSwitch = false;
   List<dynamic> _availablePokemon = [];
   String? _pendingBotDifficulty;
   String? _selectedBotName;
@@ -28,6 +29,7 @@ class GameProvider extends ChangeNotifier {
   bool get isConnecting => _isConnecting;
   bool get isSocketConnected => _socketService.isConnected;
   bool get needsTeamSelection => _needsTeamSelection;
+  bool get needsPokemonSwitch => _needsPokemonSwitch;
   List<dynamic> get availablePokemon => _availablePokemon;
   String? get selectedBotName => _selectedBotName;
   String? get brandonMessage => _brandonMessage;
@@ -67,6 +69,7 @@ class GameProvider extends ChangeNotifier {
         _currentPlayer = null;
         _lobby = LobbyModel();
         _needsTeamSelection = false;
+        _needsPokemonSwitch = false;
         _availablePokemon = [];
         _pendingBotDifficulty = null;
         _selectedBotName = null;
@@ -134,7 +137,8 @@ class GameProvider extends ChangeNotifier {
     try {
       if (data is Map<String, dynamic>) {
         _battleLog.clear();
-        _battleLog.add('¡Batalla iniciada!');
+        _needsPokemonSwitch = false;
+        _battleLog.add('¡La batalla ha comenzado!');
 
         _isMyTurn = data['currentTurn'] == _currentPlayer?.id;
 
@@ -199,6 +203,10 @@ class GameProvider extends ChangeNotifier {
             .where((p) => p.id == defender)
             .firstOrNull;
 
+        // Capture names BEFORE update for classic faint messages
+        final attackerPokemonName = attackerPlayer?.activePokemon?.name;
+        final defeatedPokemonName = defenderPlayer?.activePokemon?.name;
+
         if (defenderPlayer != null && defenderCurrentHp != null) {
           final activePokemon = defenderPlayer.activePokemon;
           List<PokemonModel> updatedTeam = defenderPlayer.team;
@@ -226,8 +234,13 @@ class GameProvider extends ChangeNotifier {
                   .firstOrNull;
             }
             if (newPokemon != null) {
-              updatedCurrentPokemonName = newPokemon.name;
-              _battleLog.add('${defenderPlayer.nickname} envió a ${newPokemon.name}');
+              // For the opponent, auto-update their active pokemon and log it
+              // For the current player, they will choose via switch dialog
+              if (defender != _currentPlayer?.id) {
+                updatedCurrentPokemonName = newPokemon.name;
+                _battleLog.add('¡${defenderPlayer.nickname} envió a ${_capitalize(newPokemon.name)}!');
+              }
+              // For the current player, we'll set currentPokemonName after they choose
             }
           }
 
@@ -250,17 +263,28 @@ class GameProvider extends ChangeNotifier {
           defenderPlayer = updatedDefender;
         }
 
-        if (attackerPlayer != null && defenderPlayer != null) {
-          final moveStr = moveName != null ? ' usó $moveName y' : '';
-          if (pokemonDefeated) {
-            _battleLog.add('${attackerPlayer.nickname}$moveStr causó $damage de daño');
-            _battleLog.add('El Pokémon de ${defenderPlayer.nickname} fue derrotado!');
-          } else {
-            _battleLog.add('${attackerPlayer.nickname}$moveStr causó $damage de daño');
-          }
+        // Classic Pokémon battle log messages
+        final attackerName = attackerPokemonName ?? attackerPlayer?.nickname ?? '???';
+        if (moveName != null) {
+          _battleLog.add('¡${_capitalize(attackerName)} usó ${_formatMoveName(moveName)}!');
+        }
+        if (damage > 0) {
+          _battleLog.add('¡Causó $damage puntos de daño!');
+        }
+
+        if (pokemonDefeated && defeatedPokemonName != null) {
+          _battleLog.add('¡${_capitalize(defeatedPokemonName)} se ha debilitado!');
         }
 
         _isMyTurn = nextTurn == _currentPlayer?.id;
+
+        // Check if current player needs to choose next pokemon
+        if (pokemonDefeated && _currentPlayer?.id == defender) {
+          final alivePokemon = _currentPlayer?.team.where((p) => !p.defeated).toList() ?? [];
+          if (alivePokemon.isNotEmpty) {
+            _needsPokemonSwitch = true;
+          }
+        }
 
         _errorMessage = null;
         notifyListeners();
@@ -279,7 +303,8 @@ class GameProvider extends ChangeNotifier {
           status: 'finished',
           winner: winner,
         );
-        _battleLog.add('¡Batalla finalizada!');
+        _battleLog.add('¡La batalla ha terminado!');
+        _needsPokemonSwitch = false;
         _errorMessage = null;
         notifyListeners();
       }
@@ -310,6 +335,7 @@ class GameProvider extends ChangeNotifier {
       _isMyTurn = false;
       _errorMessage = null;
       _needsTeamSelection = false;
+      _needsPokemonSwitch = false;
       _availablePokemon = [];
       notifyListeners();
 
@@ -371,6 +397,30 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
+  /// Cambia el pokemon activo del jugador (cuando el anterior se debilita)
+  void switchPokemon(String pokemonName) {
+    _socketService.emit('switch_pokemon', {'pokemonName': pokemonName});
+
+    // Actualizar estado local
+    if (_currentPlayer != null) {
+      _currentPlayer = _currentPlayer!.copyWith(currentPokemonName: pokemonName);
+    }
+
+    final updatedPlayers = _lobby.players.map((p) {
+      if (p.id == _currentPlayer?.id) return p.copyWith(currentPokemonName: pokemonName);
+      return p;
+    }).toList();
+    _lobby = _lobby.copyWith(players: updatedPlayers);
+
+    final pokemon = _currentPlayer?.team.where((p) => p.name == pokemonName).firstOrNull;
+    if (pokemon != null) {
+      _battleLog.add('¡Vamos, ${_capitalize(pokemon.name)}!');
+    }
+
+    _needsPokemonSwitch = false;
+    notifyListeners();
+  }
+
   void clearBattleLog() {
     _battleLog.clear();
     notifyListeners();
@@ -389,6 +439,7 @@ class GameProvider extends ChangeNotifier {
     _battleLog.clear();
     _isMyTurn = false;
     _needsTeamSelection = false;
+    _needsPokemonSwitch = false;
     _availablePokemon = [];
     _pendingBotDifficulty = null;
     _selectedBotName = null;
@@ -404,11 +455,21 @@ class GameProvider extends ChangeNotifier {
     _battleLog.clear();
     _isMyTurn = false;
     _needsTeamSelection = false;
+    _needsPokemonSwitch = false;
     _availablePokemon = [];
     _pendingBotDifficulty = null;
     _selectedBotName = null;
     _brandonMessage = null;
     notifyListeners();
+  }
+
+  String _capitalize(String s) {
+    if (s.isEmpty) return s;
+    return s[0].toUpperCase() + s.substring(1);
+  }
+
+  String _formatMoveName(String name) {
+    return name.split('-').map(_capitalize).join(' ');
   }
 
   @override

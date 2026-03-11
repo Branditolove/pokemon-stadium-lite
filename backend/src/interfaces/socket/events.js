@@ -9,6 +9,7 @@ const EVENTS = {
   ASSIGN_POKEMON: 'assign_pokemon',
   READY: 'ready',
   ATTACK: 'attack',
+  SWITCH_POKEMON: 'switch_pokemon',
 
   // Servidor -> Cliente
   LOBBY_STATUS: 'lobby_status',

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/models/player_model.dart';
+import '../../data/models/pokemon_model.dart';
 import '../providers/game_provider.dart';
 import '../widgets/battle_log.dart';
 import 'lobby_screen.dart';
@@ -59,7 +60,7 @@ class _BattleScreenState extends State<BattleScreen>
   }
 
   void _attack(GameProvider gameProvider, String moveName) {
-    if (!_isAttacking && gameProvider.isMyTurn) {
+    if (!_isAttacking && gameProvider.isMyTurn && !gameProvider.needsPokemonSwitch) {
       setState(() => _isAttacking = true);
       gameProvider.attack(moveName);
       Future.delayed(const Duration(milliseconds: 600), () {
@@ -106,7 +107,7 @@ class _BattleScreenState extends State<BattleScreen>
         if (logLen > _prevBattleLogLength) {
           final newEntries = gameProvider.battleLog.sublist(_prevBattleLogLength);
           _prevBattleLogLength = logLen;
-          if (newEntries.any((e) => e.contains('derrotado') || e.contains('fue derrotado'))) {
+          if (newEntries.any((e) => e.contains('debilitado'))) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) _faintFlashController.forward(from: 0.0);
             });
@@ -211,6 +212,7 @@ class _BattleScreenState extends State<BattleScreen>
                           size: 128,
                           flip: false,
                           currentHp: opponentPokemon.currentHp,
+                          maxHp: opponentPokemon.hp,
                         ),
                       ),
 
@@ -224,6 +226,7 @@ class _BattleScreenState extends State<BattleScreen>
                           size: 145,
                           flip: true,
                           currentHp: currentPokemon.currentHp,
+                          maxHp: currentPokemon.hp,
                         ),
                       ),
 
@@ -259,7 +262,7 @@ class _BattleScreenState extends State<BattleScreen>
 
               // ─── Battle Log ─────────────────────────────────────────
               Container(
-                height: 82,
+                height: 88,
                 decoration: BoxDecoration(
                   color: const Color(0xFF12121e),
                   border: Border.symmetric(
@@ -275,119 +278,126 @@ class _BattleScreenState extends State<BattleScreen>
                 ),
               ),
 
-              // ─── Move Panel ─────────────────────────────────────────
-              Container(
-                color: const Color(0xFF0d1117),
-                padding: const EdgeInsets.fromLTRB(10, 6, 10, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Turn indicator
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 7),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+              // ─── Bottom Panel: Switch or Moves ───────────────────────
+              gameProvider.needsPokemonSwitch && currentPlayer != null
+                  ? _PokemonSwitchPanel(
+                      alivePokemon: currentPlayer.team
+                          .where((p) => !p.defeated)
+                          .toList(),
+                      onSwitch: (name) => gameProvider.switchPokemon(name),
+                    )
+                  : Container(
+                      color: const Color(0xFF0d1117),
+                      padding: const EdgeInsets.fromLTRB(10, 6, 10, 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          if (gameProvider.isMyTurn) ...[
-                            AnimatedBuilder(
-                              animation: _pulseAnimation,
-                              builder: (_, __) => Opacity(
-                                opacity: _pulseAnimation.value,
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.hpHealthy,
-                                    shape: BoxShape.circle,
+                          // Turn indicator
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 7),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (gameProvider.isMyTurn) ...[
+                                  AnimatedBuilder(
+                                    animation: _pulseAnimation,
+                                    builder: (_, __) => Opacity(
+                                      opacity: _pulseAnimation.value,
+                                      child: Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.hpHealthy,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Text(
+                                    'TU TURNO  —  ELIGE UN MOVIMIENTO',
+                                    style: TextStyle(
+                                      color: AppColors.hpHealthy,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                ] else ...[
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.pokemonRed.withOpacity(0.5),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'TURNO DEL RIVAL...',
+                                    style: TextStyle(
+                                      color: AppColors.pokemonRed.withOpacity(0.8),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: 0.8,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+
+                          // Move buttons
+                          if (currentPokemon != null &&
+                              currentPokemon.moves.isNotEmpty)
+                            GridView.count(
+                              crossAxisCount: 2,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
+                              childAspectRatio: 3.2,
+                              children: currentPokemon.moves.map((move) {
+                                final canAttack = gameProvider.isMyTurn &&
+                                    !_isAttacking &&
+                                    !lobby.isFinished;
+                                return _MoveButton(
+                                  moveName: move.name,
+                                  movePower: move.power,
+                                  moveType: move.type,
+                                  enabled: canAttack,
+                                  onTap: canAttack
+                                      ? () => _attack(gameProvider, move.name)
+                                      : null,
+                                );
+                              }).toList(),
+                            )
+                          else
+                            SizedBox(
+                              height: 52,
+                              child: ElevatedButton(
+                                onPressed: (gameProvider.isMyTurn &&
+                                        !_isAttacking &&
+                                        !lobby.isFinished)
+                                    ? () => _attack(gameProvider, 'tackle')
+                                    : null,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.pokemonRed,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8)),
+                                ),
+                                child: const Text(
+                                  'ATACAR',
+                                  style: TextStyle(
+                                    color: AppColors.pokemonYellow,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            const Text(
-                              'TU TURNO  —  ELIGE UN MOVIMIENTO',
-                              style: TextStyle(
-                                color: AppColors.hpHealthy,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ] else ...[
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                color: AppColors.pokemonRed.withOpacity(0.5),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'TURNO DEL RIVAL...',
-                              style: TextStyle(
-                                color: AppColors.pokemonRed.withOpacity(0.8),
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ),
-
-                    // Move buttons
-                    if (currentPokemon != null &&
-                        currentPokemon.moves.isNotEmpty)
-                      GridView.count(
-                        crossAxisCount: 2,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        crossAxisSpacing: 8,
-                        mainAxisSpacing: 8,
-                        childAspectRatio: 3.2,
-                        children: currentPokemon.moves.map((move) {
-                          final canAttack = gameProvider.isMyTurn &&
-                              !_isAttacking &&
-                              !lobby.isFinished;
-                          return _MoveButton(
-                            moveName: move.name,
-                            movePower: move.power,
-                            moveType: move.type,
-                            enabled: canAttack,
-                            onTap: canAttack
-                                ? () => _attack(gameProvider, move.name)
-                                : null,
-                          );
-                        }).toList(),
-                      )
-                    else
-                      SizedBox(
-                        height: 52,
-                        child: ElevatedButton(
-                          onPressed: (gameProvider.isMyTurn &&
-                                  !_isAttacking &&
-                                  !lobby.isFinished)
-                              ? () => _attack(gameProvider, 'tackle')
-                              : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.pokemonRed,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8)),
-                          ),
-                          child: const Text(
-                            '⚔️  ATACAR',
-                            style: TextStyle(
-                              color: AppColors.pokemonYellow,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
 
               // Error bar
               if (gameProvider.errorMessage != null)
@@ -457,7 +467,7 @@ class _BattleScreenState extends State<BattleScreen>
                     : isVictory
                         ? AppColors.hpHealthy
                         : AppColors.pokemonRed,
-                width: isBrandonWin ? 3 : 3,
+                width: 3,
               ),
               boxShadow: [
                 BoxShadow(
@@ -568,6 +578,152 @@ class _BattleScreenState extends State<BattleScreen>
   }
 }
 
+// ─── Pokemon Switch Panel ─────────────────────────────────────────────────────
+class _PokemonSwitchPanel extends StatelessWidget {
+  final List<PokemonModel> alivePokemon;
+  final void Function(String pokemonName) onSwitch;
+
+  const _PokemonSwitchPanel({
+    required this.alivePokemon,
+    required this.onSwitch,
+  });
+
+  Color _hpColor(PokemonModel p) {
+    if (p.hp == 0) return AppColors.hpHealthy;
+    final pct = p.currentHp / p.hp;
+    if (pct > 0.5) return AppColors.hpHealthy;
+    if (pct > 0.25) return AppColors.hpWarning;
+    return AppColors.hpCritical;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: const Color(0xFF0d1117),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1a0000),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.pokemonRed, width: 1),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.catching_pokemon, color: AppColors.pokemonRed, size: 14),
+                SizedBox(width: 6),
+                Text(
+                  '¡Elige tu siguiente Pokémon!',
+                  style: TextStyle(
+                    color: AppColors.pokemonYellow,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Pokemon cards
+          Row(
+            children: alivePokemon.map((pokemon) {
+              final hpPct = pokemon.hp > 0 ? pokemon.currentHp / pokemon.hp : 0.0;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => onSwitch(pokemon.name),
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF1e2030), Color(0xFF12121e)],
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AppColors.pokemonYellow.withOpacity(0.5),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Sprite
+                        SizedBox(
+                          height: 52,
+                          width: 52,
+                          child: pokemon.sprite.isNotEmpty
+                              ? Image.network(
+                                  pokemon.sprite,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Icon(
+                                    Icons.catching_pokemon,
+                                    size: 36,
+                                    color: AppColors.pokemonYellow,
+                                  ),
+                                )
+                              : const Icon(
+                                  Icons.catching_pokemon,
+                                  size: 36,
+                                  color: AppColors.pokemonYellow,
+                                ),
+                        ),
+                        const SizedBox(height: 4),
+                        // Name
+                        Text(
+                          pokemon.name[0].toUpperCase() + pokemon.name.substring(1),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        // HP bar
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: Stack(
+                            children: [
+                              Container(height: 6, color: const Color(0xFF333333)),
+                              FractionallySizedBox(
+                                widthFactor: hpPct.clamp(0.0, 1.0),
+                                child: Container(height: 6, color: _hpColor(pokemon)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${pokemon.currentHp}/${pokemon.hp} HP',
+                          style: TextStyle(
+                            color: _hpColor(pokemon),
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ─── Status Box (Pokemon-game HUD style) ─────────────────────────────────────
 class _StatusBox extends StatefulWidget {
   final String name;
@@ -630,10 +786,11 @@ class _StatusBoxState extends State<_StatusBox>
   Widget build(BuildContext context) {
     final pct =
         (_displayHp / (widget.maxHp == 0 ? 1 : widget.maxHp)).clamp(0.0, 1.0);
+    final isFainted = widget.currentHp == 0;
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isFainted ? const Color(0xFFf0f0f0) : Colors.white,
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
@@ -652,8 +809,8 @@ class _StatusBoxState extends State<_StatusBox>
               Flexible(
                 child: Text(
                   widget.name.toUpperCase(),
-                  style: const TextStyle(
-                    color: Colors.black,
+                  style: TextStyle(
+                    color: isFainted ? Colors.grey : Colors.black,
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 0.5,
@@ -661,20 +818,30 @@ class _StatusBoxState extends State<_StatusBox>
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Text(
-                widget.nickname,
-                style: const TextStyle(
-                    color: Color(0xFF666666), fontSize: 9),
-              ),
+              if (isFainted)
+                const Text(
+                  'DEB.',
+                  style: TextStyle(
+                    color: Color(0xFFCC0000),
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                )
+              else
+                Text(
+                  widget.nickname,
+                  style: const TextStyle(
+                      color: Color(0xFF666666), fontSize: 9),
+                ),
             ],
           ),
           const SizedBox(height: 5),
           Row(
             children: [
-              const Text(
+              Text(
                 'HP',
                 style: TextStyle(
-                    color: Color(0xFF333333),
+                    color: isFainted ? Colors.grey : const Color(0xFF333333),
                     fontSize: 9,
                     fontWeight: FontWeight.bold),
               ),
@@ -716,12 +883,14 @@ class _PokemonSprite extends StatefulWidget {
   final double size;
   final bool flip;
   final int currentHp;
+  final int maxHp;
 
   const _PokemonSprite({
     required this.sprite,
     required this.size,
     this.flip = false,
     this.currentHp = 100,
+    this.maxHp = 100,
   });
 
   @override
@@ -765,6 +934,8 @@ class _PokemonSpriteState extends State<_PokemonSprite>
 
   @override
   Widget build(BuildContext context) {
+    final isFainted = widget.currentHp == 0;
+
     Widget img = widget.sprite.isNotEmpty
         ? Image.network(
             widget.sprite,
@@ -783,6 +954,23 @@ class _PokemonSpriteState extends State<_PokemonSprite>
         transform: Matrix4.rotationY(pi),
         child: img,
       );
+    }
+
+    // Grayscale + fade for fainted pokemon
+    if (isFainted) {
+      img = Opacity(
+        opacity: 0.35,
+        child: ColorFiltered(
+          colorFilter: const ColorFilter.matrix([
+            0.2126, 0.7152, 0.0722, 0, 0,
+            0.2126, 0.7152, 0.0722, 0, 0,
+            0.2126, 0.7152, 0.0722, 0, 0,
+            0,      0,      0,      1, 0,
+          ]),
+          child: img,
+        ),
+      );
+      return img;
     }
 
     return AnimatedBuilder(
@@ -831,7 +1019,7 @@ class _MoveButton extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                moveName.replaceAll('-', ' ').toUpperCase(),
+                moveName.split('-').map((w) => w.isNotEmpty ? w[0].toUpperCase() + w.substring(1) : w).join(' '),
                 style: TextStyle(
                   color: enabled ? Colors.white : Colors.white38,
                   fontSize: 11,
@@ -841,12 +1029,25 @@ class _MoveButton extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              Text(
-                'POW  $movePower',
-                style: TextStyle(
-                  color: enabled ? Colors.white70 : Colors.white24,
-                  fontSize: 9,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    moveType.toUpperCase(),
+                    style: TextStyle(
+                      color: enabled ? Colors.white60 : Colors.white24,
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '  ·  POW $movePower',
+                    style: TextStyle(
+                      color: enabled ? Colors.white70 : Colors.white24,
+                      fontSize: 8,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

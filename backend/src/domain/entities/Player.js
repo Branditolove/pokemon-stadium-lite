@@ -10,6 +10,7 @@ class Player {
     this.team = []; // Array de PokemonState
     this.ready = false;
     this.isActive = true;
+    this.activePokemonName = null; // pokemon activo elegido por el jugador
   }
 
   /**
@@ -21,11 +22,27 @@ class Player {
   }
 
   /**
-   * Obtiene el pokémon activo (el primero no derrotado)
+   * Obtiene el pokémon activo.
+   * Si el jugador eligió uno (activePokemonName), lo usa.
+   * Si ese está derrotado o no existe, vuelve al primero vivo.
    * @returns {PokemonState|null}
    */
   getActivePokemon() {
+    if (this.activePokemonName) {
+      const named = this.team.find(p => p.name === this.activePokemonName && !p.defeated);
+      if (named) return named;
+      // El pokemon elegido fue derrotado, limpiar selección
+      this.activePokemonName = null;
+    }
     return this.team.find(pokemon => !pokemon.defeated) || null;
+  }
+
+  /**
+   * Establece el pokémon activo por nombre (elección del jugador)
+   * @param {string} name
+   */
+  setActivePokemon(name) {
+    this.activePokemonName = name;
   }
 
   /**
