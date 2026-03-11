@@ -27,8 +27,11 @@ class SocketService {
       _socket = IO.io(
         baseUrl,
         IO.OptionBuilder()
-            .setTransports(['websocket', 'polling'])
+            .setTransports(['websocket']) // WebSocket directo: evita proxies transparentes de redes móviles
             .disableAutoConnect()
+            .enableForceNew()
+            .setReconnectionAttempts(0)
+            .setTimeout(15000)
             .build(),
       );
 

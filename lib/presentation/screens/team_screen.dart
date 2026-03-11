@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../providers/game_provider.dart';
@@ -74,12 +75,12 @@ class _TeamScreenState extends State<TeamScreen>
                   color: AppColors.pokemonYellow),
               onPressed: () => _backToLobby(gameProvider),
             ),
-            title: const Text(
+            title: Text(
               'Tu Equipo',
-              style: TextStyle(
+              style: GoogleFonts.bangers(
                 color: AppColors.pokemonYellow,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+                fontSize: 24,
+                letterSpacing: 1,
               ),
             ),
             centerTitle: true,

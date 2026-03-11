@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/constants/app_colors.dart';
@@ -6,7 +7,18 @@ import 'presentation/providers/game_provider.dart';
 import 'presentation/screens/lobby_screen.dart';
 import 'presentation/screens/url_config_screen.dart';
 
+// Permite conexiones SSL con renegociación TLS (Railway edge proxy)
+class _AppHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+  }
+}
+
 void main() async {
+  HttpOverrides.global = _AppHttpOverrides();
   WidgetsFlutterBinding.ensureInitialized();
 
   // Check if backend URL is already saved

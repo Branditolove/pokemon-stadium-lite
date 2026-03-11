@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/storage_service.dart';
@@ -123,12 +124,12 @@ class _LobbyScreenState extends State<LobbyScreen>
           appBar: AppBar(
             backgroundColor: AppColors.pokemonRed,
             elevation: 0,
-            title: const Text(
+            title: Text(
               'Pokémon Stadium Lite',
-              style: TextStyle(
+              style: GoogleFonts.bangers(
                 color: AppColors.pokemonYellow,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+                fontSize: 22,
+                letterSpacing: 1,
               ),
             ),
             centerTitle: true,
@@ -185,13 +186,12 @@ class _LobbyScreenState extends State<LobbyScreen>
                         ),
                       ),
                       const SizedBox(height: 16),
-                      const Text(
+                      Text(
                         'LOBBY',
-                        style: TextStyle(
+                        style: GoogleFonts.bangers(
                           color: AppColors.pokemonYellow,
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 6,
+                          fontSize: 42,
+                          letterSpacing: 8,
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -254,14 +254,13 @@ class _LobbyScreenState extends State<LobbyScreen>
                         ),
                         const SizedBox(height: 20),
                         // ─── Bot Selection ────────────────────────────
-                        const Align(
+                        Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
                             'ELIGE TU OPONENTE',
-                            style: TextStyle(
+                            style: GoogleFonts.bangers(
                               color: AppColors.pokemonYellow,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
                               letterSpacing: 2,
                             ),
                           ),

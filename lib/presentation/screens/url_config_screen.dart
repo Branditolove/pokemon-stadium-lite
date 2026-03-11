@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/storage_service.dart';
@@ -119,7 +120,7 @@ class _UrlConfigScreenState extends State<UrlConfigScreen>
                 padding: const EdgeInsets.fromLTRB(24, 48, 24, 40),
                 child: Column(
                   children: [
-                    // Animated Pokeball
+                    // Animated Pokeball (3D style)
                     AnimatedBuilder(
                       animation: _rotateController,
                       builder: (_, child) => Transform.rotate(
@@ -127,50 +128,90 @@ class _UrlConfigScreenState extends State<UrlConfigScreen>
                         child: child,
                       ),
                       child: Container(
-                        width: 90,
-                        height: 90,
+                        width: 96,
+                        height: 96,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.pokemonYellow.withOpacity(0.4),
-                              blurRadius: 20,
+                              color: Colors.black.withOpacity(0.5),
+                              blurRadius: 18,
+                              spreadRadius: 2,
+                            ),
+                            BoxShadow(
+                              color: AppColors.pokemonYellow.withOpacity(0.35),
+                              blurRadius: 28,
                               spreadRadius: 4,
                             ),
                           ],
                         ),
                         child: ClipOval(
-                          child: Column(
+                          child: Stack(
                             children: [
-                              Container(
-                                  height: 42,
-                                  color: AppColors.pokemonRed),
-                              Container(height: 4, color: Colors.black),
-                              Expanded(
-                                  child: Container(color: Colors.white)),
+                              // Base pokeball halves
+                              Column(
+                                children: [
+                                  Container(
+                                      height: 46,
+                                      color: AppColors.pokemonRed),
+                                  Container(
+                                      height: 4, color: Colors.black),
+                                  Expanded(
+                                      child: Container(color: Colors.white)),
+                                ],
+                              ),
+                              // Center button
+                              Center(
+                                child: Container(
+                                  width: 22,
+                                  height: 22,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white,
+                                    border: Border.all(
+                                        color: Colors.black, width: 3),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.3),
+                                        blurRadius: 4,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              // Highlight glare
+                              Positioned(
+                                top: 10,
+                                left: 18,
+                                child: Container(
+                                  width: 22,
+                                  height: 11,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.28),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    const Text(
+                    const SizedBox(height: 22),
+                    Text(
                       'Pokémon Stadium',
-                      style: TextStyle(
+                      style: GoogleFonts.bangers(
                         color: AppColors.pokemonYellow,
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
+                        fontSize: 34,
+                        letterSpacing: 2,
                       ),
                     ),
-                    const Text(
-                      'LITE',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                        letterSpacing: 6,
-                        fontWeight: FontWeight.w300,
+                    Text(
+                      'L I T E',
+                      style: GoogleFonts.bangers(
+                        color: Colors.white60,
+                        fontSize: 15,
+                        letterSpacing: 8,
                       ),
                     ),
                   ],
@@ -183,13 +224,12 @@ class _UrlConfigScreenState extends State<UrlConfigScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'SERVIDOR',
-                      style: TextStyle(
+                      style: GoogleFonts.bangers(
                         color: AppColors.pokemonYellow,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
+                        fontSize: 18,
+                        letterSpacing: 3,
                       ),
                     ),
                     const SizedBox(height: 6),

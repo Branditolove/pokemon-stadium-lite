@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/models/player_model.dart';
@@ -122,20 +123,19 @@ class _BattleScreenState extends State<BattleScreen>
             automaticallyImplyLeading: false,
             title: Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                Icon(Icons.bolt, color: AppColors.pokemonYellow, size: 18),
-                SizedBox(width: 6),
+              children: [
+                const Icon(Icons.bolt, color: AppColors.pokemonYellow, size: 18),
+                const SizedBox(width: 6),
                 Text(
                   'BATALLA',
-                  style: TextStyle(
+                  style: GoogleFonts.bangers(
                     color: AppColors.pokemonYellow,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    letterSpacing: 3,
+                    fontSize: 26,
+                    letterSpacing: 4,
                   ),
                 ),
-                SizedBox(width: 6),
-                Icon(Icons.bolt, color: AppColors.pokemonYellow, size: 18),
+                const SizedBox(width: 6),
+                const Icon(Icons.bolt, color: AppColors.pokemonYellow, size: 18),
               ],
             ),
             centerTitle: true,
@@ -187,6 +187,34 @@ class _BattleScreenState extends State<BattleScreen>
                         ),
                       );
                     }),
+                    // Clouds
+                    const Positioned(
+                        top: 14, left: 22,
+                        child: _BattleCloud(width: 72, height: 26)),
+                    const Positioned(
+                        top: 38, left: 140,
+                        child: _BattleCloud(width: 50, height: 18)),
+                    const Positioned(
+                        top: 10, right: 36,
+                        child: _BattleCloud(width: 68, height: 24)),
+                    // Grass strip on ground (horizon decoration)
+                    Positioned(
+                      top: 0, bottom: 0, left: 0, right: 0,
+                      child: Column(
+                        children: [
+                          const Spacer(),
+                          Container(
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Color(0xFF3a6b14), Color(0xFF4a8c1c)],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 0),
+                        ],
+                      ),
+                    ),
 
                     // Opponent status box — top-left
                     if (opponentPlayer != null && opponentPokemon != null)
@@ -356,7 +384,7 @@ class _BattleScreenState extends State<BattleScreen>
                               physics: const NeverScrollableScrollPhysics(),
                               crossAxisSpacing: 8,
                               mainAxisSpacing: 8,
-                              childAspectRatio: 3.2,
+                              childAspectRatio: 2.6,
                               children: currentPokemon.moves.map((move) {
                                 final canAttack = gameProvider.isMyTurn &&
                                     !_isAttacking &&
@@ -497,14 +525,13 @@ class _BattleScreenState extends State<BattleScreen>
                       : isVictory
                           ? '¡VICTORIA!'
                           : '¡DERROTA!',
-                  style: TextStyle(
+                  style: GoogleFonts.bangers(
                     color: isBrandonWin
                         ? const Color(0xFFff4444)
                         : isVictory
                             ? AppColors.hpHealthy
                             : AppColors.pokemonRed,
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 38,
                     letterSpacing: 3,
                   ),
                 ),
@@ -1003,55 +1030,174 @@ class _MoveButton extends StatelessWidget {
     this.onTap,
   });
 
+  Color _darkenColor(Color c) {
+    final hsl = HSLColor.fromColor(c);
+    return hsl.withLightness((hsl.lightness - 0.15).clamp(0.0, 1.0)).toColor();
+  }
+
   @override
   Widget build(BuildContext context) {
     final color = AppColors.getTypeColor(moveType);
-    return Material(
-      color: enabled ? color : color.withOpacity(0.28),
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        splashColor: Colors.white24,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                moveName.split('-').map((w) => w.isNotEmpty ? w[0].toUpperCase() + w.substring(1) : w).join(' '),
-                style: TextStyle(
-                  color: enabled ? Colors.white : Colors.white38,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Row(
+    final darkColor = _darkenColor(color);
+    final displayName = moveName
+        .split('-')
+        .map((w) => w.isNotEmpty ? w[0].toUpperCase() + w.substring(1) : w)
+        .join(' ');
+
+    return Opacity(
+      opacity: enabled ? 1.0 : 0.45,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [darkColor, color],
+          ),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: Colors.white.withOpacity(enabled ? 0.2 : 0.05),
+            width: 1,
+          ),
+          boxShadow: enabled
+              ? [
+                  BoxShadow(
+                    color: color.withOpacity(0.4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  )
+                ]
+              : [],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(10),
+            splashColor: Colors.white30,
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    moveType.toUpperCase(),
-                    style: TextStyle(
-                      color: enabled ? Colors.white60 : Colors.white24,
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 3,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.65),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          displayName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    '  ·  POW $movePower',
-                    style: TextStyle(
-                      color: enabled ? Colors.white70 : Colors.white24,
-                      fontSize: 8,
+                  const SizedBox(height: 3),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 9),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: Colors.black26,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            moveType.toUpperCase(),
+                            style: const TextStyle(
+                              color: Colors.white70,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          '⚡ $movePower',
+                          style: const TextStyle(
+                              color: Colors.white60, fontSize: 9),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─── Battle Cloud ─────────────────────────────────────────────────────────────
+class _BattleCloud extends StatelessWidget {
+  final double width;
+  final double height;
+
+  const _BattleCloud({required this.width, required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: Stack(
+        children: [
+          Positioned(
+            left: 0,
+            top: height * 0.4,
+            child: Container(
+              width: width * 0.48,
+              height: height * 0.6,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.14),
+                borderRadius: BorderRadius.circular(width),
+              ),
+            ),
+          ),
+          Positioned(
+            left: width * 0.2,
+            top: 0,
+            child: Container(
+              width: width * 0.52,
+              height: height,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.14),
+                borderRadius: BorderRadius.circular(width),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 0,
+            top: height * 0.35,
+            child: Container(
+              width: width * 0.42,
+              height: height * 0.65,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.14),
+                borderRadius: BorderRadius.circular(width),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

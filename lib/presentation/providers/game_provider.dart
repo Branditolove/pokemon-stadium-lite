@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../core/services/socket_service.dart';
 import '../../data/models/lobby_model.dart';
@@ -339,9 +340,24 @@ class GameProvider extends ChangeNotifier {
       _availablePokemon = [];
       notifyListeners();
 
+      // Ping HTTP para despertar el backend (Railway puede tardar en responder)
+      try {
+        final client = HttpClient()
+          ..connectionTimeout = const Duration(seconds: 8);
+        final req = await client.getUrl(Uri.parse(baseUrl));
+        await req.close();
+        client.close();
+      } catch (_) {
+        // El ping es solo de "wake up", si falla continuamos igual
+      }
+
       _socketService.connect(baseUrl);
 
-      await Future.delayed(const Duration(milliseconds: 3000));
+      // Esperar conexión cada 500ms (hasta 15s)
+      for (int i = 0; i < 30; i++) {
+        await Future.delayed(const Duration(milliseconds: 500));
+        if (_socketService.isConnected) break;
+      }
 
       if (!_socketService.isConnected) {
         final socketError = _socketService.lastError;

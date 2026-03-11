@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../providers/game_provider.dart';
@@ -107,10 +108,11 @@ class _PokemonSelectionScreenState extends State<PokemonSelectionScreen> {
             backgroundColor: AppColors.pokemonRed,
             elevation: 0,
             title: Text(
-              'Elige tu Equipo (${_selectedIds.length}/3)',
-              style: const TextStyle(
+              'Elige tu Equipo  ${_selectedIds.length}/3',
+              style: GoogleFonts.bangers(
                 color: AppColors.pokemonYellow,
-                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                letterSpacing: 1,
               ),
             ),
             centerTitle: true,
@@ -170,7 +172,7 @@ class _PokemonSelectionScreenState extends State<PokemonSelectionScreen> {
                         padding: const EdgeInsets.all(12),
                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
-                          childAspectRatio: 0.85,
+                          childAspectRatio: 0.78,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
                         ),
@@ -187,90 +189,178 @@ class _PokemonSelectionScreenState extends State<PokemonSelectionScreen> {
                           final isSelected = _selectedIds.contains(id);
                           final canSelect = _selectedIds.length < 3 || isSelected;
 
+                          final primaryTypeColor = types.isNotEmpty
+                              ? _typeColor(types[0])
+                              : AppColors.darkGray;
+                          final darkPrimary = HSLColor.fromColor(primaryTypeColor)
+                              .withLightness(
+                                (HSLColor.fromColor(primaryTypeColor).lightness - 0.22)
+                                    .clamp(0.0, 1.0))
+                              .toColor();
+
                           return GestureDetector(
                             onTap: canSelect ? () => _toggleSelection(id) : null,
                             child: Container(
                               decoration: BoxDecoration(
-                                color: AppColors.darkGray,
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
                                   color: isSelected
                                       ? AppColors.pokemonYellow
-                                      : canSelect
-                                          ? AppColors.pokemonRed
-                                          : Colors.grey.shade800,
-                                  width: isSelected ? 3 : 1,
+                                      : primaryTypeColor.withOpacity(0.5),
+                                  width: isSelected ? 3 : 1.5,
                                 ),
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  if (isSelected)
-                                    const Align(
-                                      alignment: Alignment.topRight,
-                                      child: Padding(
-                                        padding: EdgeInsets.only(right: 8, top: 8),
-                                        child: Icon(
-                                          Icons.check_circle,
-                                          color: AppColors.pokemonYellow,
-                                          size: 20,
-                                        ),
-                                      ),
-                                    )
-                                  else
-                                    const SizedBox(height: 28),
-                                  sprite.isNotEmpty
-                                      ? Image.network(
-                                          sprite,
-                                          height: 80,
-                                          width: 80,
-                                          fit: BoxFit.contain,
-                                          errorBuilder: (_, __, ___) => const Icon(
-                                            Icons.catching_pokemon,
-                                            color: AppColors.pokemonYellow,
-                                            size: 60,
-                                          ),
-                                        )
-                                      : const Icon(
-                                          Icons.catching_pokemon,
-                                          color: AppColors.pokemonYellow,
-                                          size: 60,
-                                        ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    name,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 6),
-                                  Wrap(
-                                    alignment: WrapAlignment.center,
-                                    spacing: 4,
-                                    children: types
-                                        .map((t) => Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 6,
-                                                vertical: 2,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: _typeColor(t),
-                                                borderRadius: BorderRadius.circular(10),
-                                              ),
-                                              child: Text(
-                                                t,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ))
-                                        .toList(),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: isSelected
+                                        ? AppColors.pokemonYellow.withOpacity(0.4)
+                                        : primaryTypeColor.withOpacity(0.2),
+                                    blurRadius: isSelected ? 12 : 6,
+                                    spreadRadius: isSelected ? 2 : 0,
                                   ),
                                 ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(13),
+                                child: Column(
+                                  children: [
+                                    // Type gradient header with sprite
+                                    Expanded(
+                                      flex: 6,
+                                      child: Container(
+                                        width: double.infinity,
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              primaryTypeColor.withOpacity(0.85),
+                                              darkPrimary
+                                            ],
+                                          ),
+                                        ),
+                                        child: Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            // Pokeball watermark
+                                            Positioned(
+                                              right: -8,
+                                              bottom: -8,
+                                              child: Opacity(
+                                                opacity: 0.12,
+                                                child: const Icon(
+                                                  Icons.catching_pokemon,
+                                                  size: 60,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                            sprite.isNotEmpty
+                                                ? Image.network(
+                                                    sprite,
+                                                    height: 75,
+                                                    width: 75,
+                                                    fit: BoxFit.contain,
+                                                    errorBuilder: (_, __, ___) =>
+                                                        Icon(
+                                                      Icons.catching_pokemon,
+                                                      color: Colors.white
+                                                          .withOpacity(0.7),
+                                                      size: 55,
+                                                    ),
+                                                  )
+                                                : Icon(
+                                                    Icons.catching_pokemon,
+                                                    color: Colors.white
+                                                        .withOpacity(0.7),
+                                                    size: 55,
+                                                  ),
+                                            if (isSelected)
+                                              Positioned(
+                                                top: 6,
+                                                right: 6,
+                                                child: Container(
+                                                  width: 22,
+                                                  height: 22,
+                                                  decoration: BoxDecoration(
+                                                    color:
+                                                        AppColors.pokemonYellow,
+                                                    shape: BoxShape.circle,
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.black
+                                                            .withOpacity(0.3),
+                                                        blurRadius: 4,
+                                                      )
+                                                    ],
+                                                  ),
+                                                  child: const Icon(Icons.check,
+                                                      color: Colors.black,
+                                                      size: 14),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    // Dark info section
+                                    Expanded(
+                                      flex: 4,
+                                      child: Container(
+                                        color: const Color(0xFF1a1a2e),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 8, vertical: 6),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              name.toUpperCase(),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 11,
+                                                letterSpacing: 0.3,
+                                              ),
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Wrap(
+                                              spacing: 3,
+                                              children: types
+                                                  .map(
+                                                    (t) => Container(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 5,
+                                                          vertical: 1),
+                                                      decoration: BoxDecoration(
+                                                        color: _typeColor(t),
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(8),
+                                                      ),
+                                                      child: Text(
+                                                        t.toUpperCase(),
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 8,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList(),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           );
