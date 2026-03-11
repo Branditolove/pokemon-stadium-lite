@@ -21,10 +21,11 @@ Backend en Node.js para la aplicación "Pokémon Stadium Lite", un juego multipl
 
 ### Pasos de Instalación
 
-1. **Clonar el repositorio o crear el directorio**
+1. **Clonar el repositorio**
 
 ```bash
-cd /sessions/upbeat-cool-heisenberg/mnt/pokemon_app/backend
+git clone <repo-url>
+cd pokemon-stadium-lite/backend
 ```
 
 2. **Instalar dependencias**
@@ -167,7 +168,12 @@ El jugador confirma su equipo y está listo para la batalla.
 #### `attack`
 El jugador realiza un ataque (solo válido si es su turno).
 
-**Payload:** Vacío
+**Payload:**
+```json
+{
+  "moveName": "string"
+}
+```
 
 ### Eventos del Servidor → Cliente
 
@@ -269,11 +275,17 @@ Hay un error en la operación.
 
 ### Battle Flow
 1. El turno comienza con el jugador cuyo Pokémon tiene mayor Speed
-2. Los turnos son secuenciales y atómicos
-3. **Daño**: `max(1, attacker.attack - defender.defense)`
+2. Los turnos son secuenciales y atómicos (sin race conditions)
+3. **Daño**: `max(5, floor(attacker.attack × move.power / (2 × defender.defense)))`
 4. Si HP ≤ 0, el Pokémon es derrotado
 5. Si hay Pokémon disponible, entra automáticamente
 6. Si no hay más Pokémon, fin de batalla
+
+> **Nota sobre la fórmula de daño:** El spec base propone `Attack - Defense (mín. 1)`, sin
+> embargo la API externa retorna stats reales con rangos amplios (ej. Attack 49–134,
+> Defense 49–230), lo que genera daño constante de 1 cuando Defense ≥ Attack.
+> Para lograr batallas balanceadas y dinámicas, la fórmula fue extendida para incluir
+> el poder del movimiento (`move.power`), replicando la mecánica real de Pokémon.
 
 ### Lobby States
 - **waiting**: Esperando 2 jugadores

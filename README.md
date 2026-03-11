@@ -148,7 +148,7 @@ pokemon_app/
 | `join_lobby` | `{nickname: string}` | Join the game lobby |
 | `assign_pokemon` | (none) | Request random Pokémon team |
 | `ready` | (none) | Mark team ready to battle |
-| `attack` | (none) | Execute attack on current turn |
+| `attack` | `{moveName: string}` | Execute attack on current turn |
 
 ### Server → Client (Backend emits, Flutter listens)
 
@@ -164,10 +164,16 @@ pokemon_app/
 
 - Each player gets 3 random Pokémon (no duplicates between players)
 - First turn determined by highest Speed stat
-- Damage calculation: `max(1, attacker.attack - defender.defense)`
+- **Damage formula**: `max(5, floor(attacker.attack × move.power / (2 × defender.defense)))`
 - When a Pokémon is defeated (HP = 0), next Pokémon automatically enters
 - Battle ends when one player has no Pokémon left
 - Disconnection during battle = automatic loss
+
+> **About the damage formula:** The spec proposes `Attack - Defense (min 1)`. However,
+> the external Pokémon API returns real stat ranges (Attack 49–134, Defense 49–230),
+> which causes constant 1-damage when Defense ≥ Attack. The formula was extended
+> to include move power, producing balanced and dynamic battles — closer to the
+> actual Pokémon game mechanics.
 
 ## Environment Variables
 
@@ -293,5 +299,5 @@ Pokémon Stadium Lite Team
 
 ---
 
-**Last Updated**: 2026-03-06
+**Last Updated**: 2026-03-10
 **Version**: 1.0.0
