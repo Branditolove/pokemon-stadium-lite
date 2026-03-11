@@ -295,8 +295,7 @@ MIT
 
 ## Authors
 
-Pokémon Stadium Lite Team
-
+Brandon Diaz Vazquez  
 ---
 
 **Last Updated**: 2026-03-10
