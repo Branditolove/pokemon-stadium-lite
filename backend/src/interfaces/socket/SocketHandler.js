@@ -266,6 +266,10 @@ class SocketHandler {
           status: finalLobby.status,
           players: finalLobby.players.map(p => this._serializePlayer(p))
         });
+
+        // Limpiar lobby y jugadores de la DB para que el próximo juego empiece fresco
+        await this.lobbyRepository.delete(lobbyId);
+        console.log(`🧹 Lobby ${lobbyId} eliminado tras fin de batalla.`);
       }
     } catch (error) {
       console.error('Error in handleAttack:', error);
@@ -359,15 +363,21 @@ class SocketHandler {
       if (lobby.status === 'battling') {
         const opponent = lobby.getOpponent(playerId);
         if (opponent) {
-          lobby.endBattle(opponent.id);
-          await this.lobbyRepository.update(lobby);
           this.io.to(`lobby:${lobbyId}`).emit(EVENTS.BATTLE_END, { winner: opponent.id });
         }
+        // Eliminar lobby y liberar el slot para la próxima partida
+        await this.lobbyRepository.delete(lobbyId);
+        console.log(`🧹 Lobby ${lobbyId} eliminado por desconexión en batalla.`);
+      } else if (lobby.status === 'finished') {
+        // Lobby ya terminado, solo limpiar si quedan referencias
+        await this.lobbyRepository.delete(lobbyId);
+        console.log(`🧹 Lobby ${lobbyId} eliminado (ya estaba terminado).`);
       } else if (lobby.status === 'waiting' || lobby.status === 'ready') {
-        // Remove disconnected player from lobby so it doesn't block future sessions
+        // Remover jugador desconectado del lobby
         lobby.players = lobby.players.filter(p => p.id !== playerId);
         if (lobby.players.length === 0) {
           await this.lobbyRepository.delete(lobbyId);
+          console.log(`🧹 Lobby ${lobbyId} eliminado (sin jugadores).`);
         } else {
           lobby.status = 'waiting';
           await this.lobbyRepository.update(lobby);
