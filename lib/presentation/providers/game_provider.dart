@@ -384,6 +384,9 @@ class GameProvider extends ChangeNotifier {
   }
 
   void spawnBot(String difficulty) {
+    // Clear pending bot so _handleLobbyStatus auto-spawn doesn't fire a second time
+    _pendingBotDifficulty = null;
+    _needsTeamSelection = true;
     _socketService.emit('spawn_bot', {'difficulty': difficulty});
   }
 

@@ -99,6 +99,21 @@ class SocketHandler {
         return;
       }
 
+      // Expulsar jugadores con socket desconectado de un lobby lleno antes de unirse.
+      // Esto resuelve el race condition donde el cliente reconecta antes de que el
+      // servidor procese el evento disconnect del socket anterior.
+      const existingLobby = await this.lobbyRepository.findGlobalLobby();
+      if (existingLobby && existingLobby.isFull()) {
+        for (const playerRef of [...existingLobby.players]) {
+          const p = await this.playerRepository.findById(playerRef.id);
+          if (p && p.socketId && !this.io.sockets.sockets.has(p.socketId)) {
+            existingLobby.players = existingLobby.players.filter(x => x.id !== playerRef.id);
+            await this.lobbyRepository.update(existingLobby);
+            console.log(`🧹 Jugador "${p.nickname}" expulsado del lobby lleno (socket desconectado)`);
+          }
+        }
+      }
+
       const result = await this.joinLobbyUseCase.execute({
         nickname,
         socketId: socket.id
@@ -373,15 +388,12 @@ class SocketHandler {
         await this.lobbyRepository.delete(lobbyId);
         console.log(`🧹 Lobby ${lobbyId} eliminado (ya estaba terminado).`);
       } else if (lobby.status === 'waiting' || lobby.status === 'ready') {
-        // Remover jugador desconectado del lobby
-        lobby.players = lobby.players.filter(p => p.id !== playerId);
-        if (lobby.players.length === 0) {
-          await this.lobbyRepository.delete(lobbyId);
-          console.log(`🧹 Lobby ${lobbyId} eliminado (sin jugadores).`);
-        } else {
-          lobby.status = 'waiting';
-          await this.lobbyRepository.update(lobby);
-        }
+        // Eliminar lobby completo para garantizar estado limpio en la próxima partida.
+        // Así evitamos que un bot "huérfano" bloquee el lobby y que el race condition
+        // de reconexión rápida deje un lobby lleno inaccesible.
+        await this.lobbyRepository.delete(lobbyId);
+        this.io.to(`lobby:${lobbyId}`).emit('lobby_closed');
+        console.log(`🧹 Lobby ${lobbyId} eliminado (jugador desconectado en espera).`);
       }
 
       console.log(`Player ${playerId} disconnected`);

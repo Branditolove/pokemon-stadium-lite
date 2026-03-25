@@ -513,7 +513,8 @@ class _LobbyScreenState extends State<LobbyScreen>
                           ),
                         ),
                         // ─── Spawn bot (when already in lobby alone) ──
-                        if (currentPlayer != null) ...[
+                        // Only show after server confirms player (id != null)
+                        if (currentPlayer != null && currentPlayer.id != null) ...[
                           const SizedBox(height: 20),
                           const Align(
                             alignment: Alignment.centerLeft,

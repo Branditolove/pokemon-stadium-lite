@@ -88,6 +88,11 @@ function spawnInProcessBot({ url, nickname, difficulty }) {
     setTimeout(() => socket.disconnect(), 2000);
   });
 
+  socket.on('lobby_closed', () => {
+    console.log(`🤖 Bot "${nickname}" lobby cerrado, desconectando...`);
+    socket.disconnect();
+  });
+
   socket.on('error', (data) => {
     console.error(`🤖 Bot "${nickname}" error: ${data.message || data}`);
   });
