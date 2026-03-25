@@ -64,6 +64,10 @@ class GameProvider extends ChangeNotifier {
       _handleError(data);
     });
 
+    _socketService.on('lobby_preview', (data) {
+      _handleLobbyPreview(data);
+    });
+
     // Reset session state on disconnect so stale player data is cleared
     _socketService.on('disconnect', (_) {
       if (_currentPlayer != null) {
@@ -314,6 +318,22 @@ class GameProvider extends ChangeNotifier {
     }
   }
 
+  void _handleLobbyPreview(dynamic data) {
+    if (_currentPlayer != null) return; // Ya unido, ignorar preview
+    try {
+      if (data is Map<String, dynamic>) {
+        final players = (data['players'] as List?)
+                ?.map((p) => PlayerModel.fromJson(p as Map<String, dynamic>))
+                .toList() ??
+            [];
+        _lobby = _lobby.copyWith(players: players);
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error handling lobby preview: $e');
+    }
+  }
+
   void _handleError(dynamic data) {
     try {
       if (data is Map<String, dynamic>) {
@@ -366,6 +386,7 @@ class GameProvider extends ChangeNotifier {
             : 'No se pudo conectar al servidor ($baseUrl). Verifica que el backend esté corriendo y la IP sea correcta.';
       } else {
         _errorMessage = null;
+        _socketService.emit('get_lobby_status', {});
       }
 
       _isConnecting = false;
@@ -464,6 +485,10 @@ class GameProvider extends ChangeNotifier {
     _selectedBotName = null;
     _brandonMessage = null;
     _errorMessage = null;
+    // Refrescar preview del lobby para ver jugadores esperando
+    if (_socketService.isConnected) {
+      _socketService.emit('get_lobby_status', {});
+    }
     notifyListeners();
   }
 

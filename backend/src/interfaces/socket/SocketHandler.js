@@ -70,8 +70,53 @@ class SocketHandler {
     socket.on(EVENTS.ATTACK, (payload) => this.handleAttack(socket, payload));
     socket.on(EVENTS.SWITCH_POKEMON, (payload) => this.handleSwitchPokemon(socket, payload));
     socket.on('get_pokemon_list', () => this.handleGetPokemonList(socket));
+    socket.on('get_lobby_status', () => this.handleGetLobbyStatus(socket));
     socket.on('spawn_bot', (payload) => this.handleSpawnBot(socket, payload));
     socket.on('disconnect', () => this.handleDisconnect(socket));
+  }
+
+  /**
+   * Devuelve el estado actual del lobby sin unirse (preview público)
+   */
+  async handleGetLobbyStatus(socket) {
+    try {
+      const lobby = await this.lobbyRepository.findGlobalLobby();
+      if (!lobby || lobby.players.length === 0) {
+        socket.emit('lobby_preview', { players: [], status: 'waiting' });
+        return;
+      }
+      const playersData = await Promise.all(
+        lobby.players.map(p => this.playerRepository.findById(p.id))
+      );
+      socket.emit('lobby_preview', {
+        status: lobby.status,
+        players: playersData.filter(Boolean).map(p => this._serializePlayer(p))
+      });
+    } catch (error) {
+      console.error('Error in handleGetLobbyStatus:', error);
+    }
+  }
+
+  /**
+   * Emite lobby_preview a todos los sockets conectados (watchers + miembros)
+   */
+  async _pushLobbyPreview(lobbyId) {
+    try {
+      const lobby = lobbyId ? await this.lobbyRepository.findById(lobbyId) : null;
+      if (!lobby || lobby.players.length === 0) {
+        this.io.emit('lobby_preview', { players: [], status: 'waiting' });
+        return;
+      }
+      const playersData = await Promise.all(
+        lobby.players.map(p => this.playerRepository.findById(p.id))
+      );
+      this.io.emit('lobby_preview', {
+        status: lobby.status,
+        players: playersData.filter(Boolean).map(p => this._serializePlayer(p))
+      });
+    } catch (error) {
+      console.error('Error pushing lobby preview:', error);
+    }
   }
 
   /**
@@ -139,6 +184,9 @@ class SocketHandler {
         status: updatedLobby.status,
         players: updatedLobby.players.map(p => this._serializePlayer(p))
       });
+
+      // Actualizar preview para todos los que aún no se han unido
+      await this._pushLobbyPreview(lobby.id);
     } catch (error) {
       console.error('Error in handleJoinLobby:', error);
       socket.emit(EVENTS.ERROR, { message: error.message });
@@ -393,6 +441,7 @@ class SocketHandler {
         // de reconexión rápida deje un lobby lleno inaccesible.
         await this.lobbyRepository.delete(lobbyId);
         this.io.to(`lobby:${lobbyId}`).emit('lobby_closed');
+        this.io.emit('lobby_preview', { players: [], status: 'waiting' });
         console.log(`🧹 Lobby ${lobbyId} eliminado (jugador desconectado en espera).`);
       }
 
