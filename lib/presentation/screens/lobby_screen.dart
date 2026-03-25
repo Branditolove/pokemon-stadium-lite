@@ -53,6 +53,7 @@ class _LobbyScreenState extends State<LobbyScreen>
   late TextEditingController _nicknameController;
   bool _isJoining = false;
   String? _selectedDifficulty;
+  String? _selectedHumanNickname; // nickname del jugador humano seleccionado
 
   @override
   void initState() {
@@ -69,17 +70,24 @@ class _LobbyScreenState extends State<LobbyScreen>
   void _joinLobby(GameProvider gameProvider) {
     final nickname = _nicknameController.text.trim();
     if (nickname.isEmpty) {
-      _showError('Por favor ingresa tu nickname');
+      _showError('Por favor ingresa tu nombre de entrenador');
       return;
     }
-    if (_selectedDifficulty == null) {
+    if (_selectedHumanNickname == null && _selectedDifficulty == null) {
       _showError('Elige un oponente primero');
       return;
     }
-    final bot = _botOptions.firstWhere((b) => b['difficulty'] == _selectedDifficulty);
-    gameProvider.setSelectedBot(_selectedDifficulty!, bot['name'] as String);
-    setState(() => _isJoining = true);
-    gameProvider.joinLobby(nickname);
+    if (_selectedHumanNickname != null) {
+      // Jugar contra humano: unirse sin spawnar bot
+      setState(() => _isJoining = true);
+      gameProvider.joinLobby(nickname);
+    } else {
+      // Jugar contra bot
+      final bot = _botOptions.firstWhere((b) => b['difficulty'] == _selectedDifficulty);
+      gameProvider.setSelectedBot(_selectedDifficulty!, bot['name'] as String);
+      setState(() => _isJoining = true);
+      gameProvider.joinLobby(nickname);
+    }
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) setState(() => _isJoining = false);
     });
@@ -116,6 +124,15 @@ class _LobbyScreenState extends State<LobbyScreen>
               MaterialPageRoute(
                   builder: (context) => const PokemonSelectionScreen()),
             );
+          });
+        }
+
+        // Si el jugador humano seleccionado ya no está en el preview, deseleccionar
+        if (_selectedHumanNickname != null &&
+            currentPlayer == null &&
+            !lobby.players.any((p) => p.nickname == _selectedHumanNickname)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _selectedHumanNickname = null);
           });
         }
 
@@ -252,26 +269,137 @@ class _LobbyScreenState extends State<LobbyScreen>
                           enabled: !_isJoining,
                           onSubmitted: (_) => _joinLobby(gameProvider),
                         ),
-                        const SizedBox(height: 20),
-                        // ─── Bot Selection ────────────────────────────
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'ELIGE TU OPONENTE',
-                            style: GoogleFonts.bangers(
-                              color: AppColors.pokemonYellow,
-                              fontSize: 18,
-                              letterSpacing: 2,
+                        const SizedBox(height: 24),
+
+                        // ─── Jugadores humanos esperando ──────────────
+                        if (lobby.players.isNotEmpty) ...[
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'JUGADORES ESPERANDO',
+                              style: GoogleFonts.bangers(
+                                color: AppColors.pokemonYellow,
+                                fontSize: 18,
+                                letterSpacing: 2,
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 10),
+                          const SizedBox(height: 10),
+                          ...lobby.players.map((player) {
+                            final isSelected = _selectedHumanNickname == player.nickname;
+                            return GestureDetector(
+                              onTap: () => setState(() {
+                                _selectedHumanNickname = player.nickname;
+                                _selectedDifficulty = null;
+                              }),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: isSelected ? const Color(0xFF1a3a5c).withOpacity(0.8) : AppColors.darkGray,
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: isSelected ? Colors.blueAccent : const Color(0xFF333333),
+                                    width: isSelected ? 2 : 1,
+                                  ),
+                                  boxShadow: isSelected
+                                      ? [const BoxShadow(color: Colors.blueAccent, blurRadius: 10, spreadRadius: 1, opacity: 0.4)]
+                                      : [],
+                                ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 42,
+                                      height: 42,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: isSelected ? Colors.blueAccent : const Color(0xFF3a3a3a),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          player.nickname.isNotEmpty ? player.nickname[0].toUpperCase() : '?',
+                                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            player.nickname,
+                                            style: TextStyle(
+                                              color: isSelected ? Colors.white : const Color(0xFFbbbbbb),
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const Text(
+                                            'Jugador humano · esperando rival',
+                                            style: TextStyle(color: Color(0xFF888888), fontSize: 11),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blueAccent.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: Colors.blueAccent.withOpacity(0.5)),
+                                      ),
+                                      child: const Text('PvP', style: TextStyle(color: Colors.blueAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                                    ),
+                                    if (isSelected) ...[
+                                      const SizedBox(width: 8),
+                                      const Icon(Icons.check_circle_rounded, color: Colors.blueAccent, size: 22),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                          const SizedBox(height: 20),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'O JUEGA CONTRA UN BOT',
+                              style: GoogleFonts.bangers(
+                                color: const Color(0xFF888888),
+                                fontSize: 16,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                        ] else ...[
+                          // ─── Bot Selection ──────────────────────────
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'ELIGE TU OPONENTE',
+                              style: GoogleFonts.bangers(
+                                color: AppColors.pokemonYellow,
+                                fontSize: 18,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                        ],
+
+                        // ─── Bot options (siempre disponibles) ────────
                         ..._botOptions.map((bot) {
                           final isSelected = _selectedDifficulty == bot['difficulty'];
                           final borderColor = bot['border'] as Color;
                           final bgColor = bot['color'] as Color;
                           return GestureDetector(
-                            onTap: () => setState(() => _selectedDifficulty = bot['difficulty'] as String),
+                            onTap: () => setState(() {
+                              _selectedDifficulty = bot['difficulty'] as String;
+                              _selectedHumanNickname = null;
+                            }),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               margin: const EdgeInsets.only(bottom: 10),
@@ -350,9 +478,10 @@ class _LobbyScreenState extends State<LobbyScreen>
                                 ? null
                                 : () => _joinLobby(gameProvider),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.pokemonRed,
-                              disabledBackgroundColor:
-                                  const Color(0xFF882222),
+                              backgroundColor: _selectedHumanNickname != null
+                                  ? Colors.blueAccent
+                                  : AppColors.pokemonRed,
+                              disabledBackgroundColor: const Color(0xFF882222),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14)),
                               elevation: 6,
@@ -367,9 +496,11 @@ class _LobbyScreenState extends State<LobbyScreen>
                                     ),
                                   )
                                 : Text(
-                                    _selectedDifficulty != null
-                                        ? '⚔ LUCHAR CONTRA ${(_botOptions.firstWhere((b) => b['difficulty'] == _selectedDifficulty)['name'] as String).toUpperCase()}'
-                                        : 'Entrar al Lobby',
+                                    _selectedHumanNickname != null
+                                        ? '⚔ DESAFIAR A ${_selectedHumanNickname!.toUpperCase()}'
+                                        : _selectedDifficulty != null
+                                            ? '⚔ LUCHAR CONTRA ${(_botOptions.firstWhere((b) => b['difficulty'] == _selectedDifficulty)['name'] as String).toUpperCase()}'
+                                            : 'Entrar al Lobby',
                                     style: const TextStyle(
                                       color: AppColors.pokemonYellow,
                                       fontSize: 15,
