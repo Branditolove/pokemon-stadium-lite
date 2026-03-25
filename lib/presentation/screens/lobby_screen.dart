@@ -304,7 +304,7 @@ class _LobbyScreenState extends State<LobbyScreen>
                                     width: isSelected ? 2 : 1,
                                   ),
                                   boxShadow: isSelected
-                                      ? [const BoxShadow(color: Colors.blueAccent, blurRadius: 10, spreadRadius: 1, opacity: 0.4)]
+                                      ? [BoxShadow(color: Colors.blueAccent.withOpacity(0.4), blurRadius: 10, spreadRadius: 1)]
                                       : [],
                                 ),
                                 child: Row(
