@@ -408,6 +408,8 @@ class GameProvider extends ChangeNotifier {
     // Clear pending bot so _handleLobbyStatus auto-spawn doesn't fire a second time
     _pendingBotDifficulty = null;
     _needsTeamSelection = true;
+    // Pedir la lista de pokemon antes de navegar a PokemonSelectionScreen
+    _socketService.emit('get_pokemon_list', {});
     _socketService.emit('spawn_bot', {'difficulty': difficulty});
   }
 

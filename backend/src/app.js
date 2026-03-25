@@ -86,6 +86,42 @@ async function startServer() {
       socketHandler.registerHandlers(socket);
     });
 
+    // Temporary admin endpoint: force-ready all players in current lobby
+    app.get('/admin/force-ready', async (req, res) => {
+      try {
+        const lobby = await lobbyRepository.findGlobalLobby();
+        if (!lobby) return res.json({ error: 'No lobby found' });
+
+        let canStartBattle = false;
+        for (const playerRef of lobby.players) {
+          const result = await socketHandler.readyUseCase.execute({
+            playerId: playerRef.id,
+            lobbyId: lobby.id
+          });
+          canStartBattle = result.canStartBattle;
+        }
+
+        const updatedLobby = await lobbyRepository.findById(lobby.id);
+        const playersData = await Promise.all(
+          updatedLobby.players.map(p => playerRepository.findById(p.id))
+        );
+        updatedLobby.players = playersData;
+
+        io.to(`lobby:${lobby.id}`).emit('lobby_status', {
+          status: updatedLobby.status,
+          players: updatedLobby.players.map(p => socketHandler._serializePlayer(p))
+        });
+
+        if (canStartBattle) {
+          await socketHandler.startBattle(updatedLobby);
+          return res.json({ status: 'Battle started!' });
+        }
+        res.json({ status: 'Players marked ready', canStartBattle });
+      } catch (e) {
+        res.json({ error: e.message });
+      }
+    });
+
     // Iniciar servidor HTTP
     const PORT = process.env.PORT || 8080;
     const HOST = '0.0.0.0';

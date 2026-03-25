@@ -59,6 +59,7 @@ class _TeamScreenState extends State<TeamScreen>
 
         if (lobby.isBattling) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(builder: (context) => const BattleScreen()),
             );
@@ -355,84 +356,6 @@ class _TeamScreenState extends State<TeamScreen>
                         const SizedBox(height: 20),
                       ],
 
-                      // ─── Ready / Waiting ─────────────────────────
-                      if (!_isReady)
-                        SizedBox(
-                          height: 56,
-                          child: ElevatedButton(
-                            onPressed: currentPlayer != null &&
-                                    currentPlayer.team.isNotEmpty
-                                ? () => _readyForBattle(gameProvider)
-                                : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.hpHealthy,
-                              disabledBackgroundColor:
-                                  const Color(0xFF336633),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14)),
-                              elevation: 8,
-                            ),
-                            child: const Text(
-                              '⚔️  ¡Listo para Batallar!',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 17,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        )
-                      else
-                        AnimatedBuilder(
-                          animation: _glowAnimation,
-                          builder: (_, __) => Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(18),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF0d2b0d),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: AppColors.hpHealthy
-                                    .withOpacity(_glowAnimation.value),
-                                width: 2,
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppColors.hpHealthy.withOpacity(
-                                      _glowAnimation.value * 0.3),
-                                  blurRadius: 12,
-                                  spreadRadius: 1,
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              children: [
-                                const Icon(Icons.check_circle,
-                                    color: AppColors.hpHealthy, size: 32),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  '¡Listo!',
-                                  style: TextStyle(
-                                    color: AppColors.hpHealthy,
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  lobby.players.length > 1
-                                      ? (lobby.allPlayersReady
-                                          ? 'Iniciando batalla...'
-                                          : 'Esperando al rival...')
-                                      : 'Esperando jugadores...',
-                                  style: const TextStyle(
-                                      color: Colors.white54, fontSize: 13),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-
                       // Error
                       if (gameProvider.errorMessage != null) ...[
                         const SizedBox(height: 16),
@@ -470,6 +393,86 @@ class _TeamScreenState extends State<TeamScreen>
                   ),
                 ),
               ],
+            ),
+          ),
+          bottomNavigationBar: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+              child: !_isReady
+                  ? SizedBox(
+                      height: 56,
+                      child: ElevatedButton(
+                        onPressed: currentPlayer != null &&
+                                currentPlayer.team.isNotEmpty
+                            ? () => _readyForBattle(gameProvider)
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.hpHealthy,
+                          disabledBackgroundColor: const Color(0xFF336633),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                          elevation: 8,
+                        ),
+                        child: const Text(
+                          '⚔️  ¡Listo para Batallar!',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    )
+                  : AnimatedBuilder(
+                      animation: _glowAnimation,
+                      builder: (_, __) => Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0d2b0d),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: AppColors.hpHealthy
+                                .withOpacity(_glowAnimation.value),
+                            width: 2,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.hpHealthy
+                                  .withOpacity(_glowAnimation.value * 0.3),
+                              blurRadius: 12,
+                              spreadRadius: 1,
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.check_circle,
+                                color: AppColors.hpHealthy, size: 32),
+                            const SizedBox(height: 8),
+                            const Text(
+                              '¡Listo!',
+                              style: TextStyle(
+                                color: AppColors.hpHealthy,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              lobby.players.length > 1
+                                  ? (lobby.allPlayersReady
+                                      ? 'Iniciando batalla...'
+                                      : 'Esperando al rival...')
+                                  : 'Esperando jugadores...',
+                              style: const TextStyle(
+                                  color: Colors.white54, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
             ),
           ),
         );

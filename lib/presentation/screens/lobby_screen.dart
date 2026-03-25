@@ -73,18 +73,18 @@ class _LobbyScreenState extends State<LobbyScreen>
       _showError('Por favor ingresa tu nombre de entrenador');
       return;
     }
-    if (_selectedHumanNickname == null && _selectedDifficulty == null) {
-      _showError('Elige un oponente primero');
-      return;
-    }
     if (_selectedHumanNickname != null) {
       // Jugar contra humano: unirse sin spawnar bot
       setState(() => _isJoining = true);
       gameProvider.joinLobby(nickname);
-    } else {
+    } else if (_selectedDifficulty != null) {
       // Jugar contra bot
       final bot = _botOptions.firstWhere((b) => b['difficulty'] == _selectedDifficulty);
       gameProvider.setSelectedBot(_selectedDifficulty!, bot['name'] as String);
+      setState(() => _isJoining = true);
+      gameProvider.joinLobby(nickname);
+    } else {
+      // Unirse al lobby a esperar un jugador humano (sin bot)
       setState(() => _isJoining = true);
       gameProvider.joinLobby(nickname);
     }
@@ -120,6 +120,7 @@ class _LobbyScreenState extends State<LobbyScreen>
 
         if (gameProvider.needsTeamSelection) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
             Navigator.of(context).pushReplacement(
               MaterialPageRoute(
                   builder: (context) => const PokemonSelectionScreen()),
@@ -480,7 +481,9 @@ class _LobbyScreenState extends State<LobbyScreen>
                             style: ElevatedButton.styleFrom(
                               backgroundColor: _selectedHumanNickname != null
                                   ? Colors.blueAccent
-                                  : AppColors.pokemonRed,
+                                  : _selectedDifficulty != null
+                                      ? AppColors.pokemonRed
+                                      : const Color(0xFF1a3a5c),
                               disabledBackgroundColor: const Color(0xFF882222),
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14)),
@@ -500,7 +503,7 @@ class _LobbyScreenState extends State<LobbyScreen>
                                         ? '⚔ DESAFIAR A ${_selectedHumanNickname!.toUpperCase()}'
                                         : _selectedDifficulty != null
                                             ? '⚔ LUCHAR CONTRA ${(_botOptions.firstWhere((b) => b['difficulty'] == _selectedDifficulty)['name'] as String).toUpperCase()}'
-                                            : 'Entrar al Lobby',
+                                            : '⏳ ENTRAR Y ESPERAR RIVAL',
                                     style: const TextStyle(
                                       color: AppColors.pokemonYellow,
                                       fontSize: 15,
